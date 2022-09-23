@@ -1,0 +1,122 @@
+@startuml
+
+title Flink Session Cluster Shutdown (Happy Path)
+
+actor "External Process" as EP
+
+box "Job Management"
+participant Dispatcher as D
+participant DispatcherGatewayService as DS
+participant DispatcherLeaderProcess as DLP
+participant DispatcherRunner as DR
+end box
+
+participant DispatcherResourceManagerComponent as DRMC
+participant ClusterEntrypoint as CE
+
+box "Resource Management"
+participant ResourceManagerService as RMS
+participant ResourceManager as RM
+participant ResourceManagerDriver as RMD
+end box
+
+activate CE
+    alt internal shutdown through Dispatcher
+        D -> D : shutDownFuture.complete
+        D -> DLP : forwards future completion
+        DLP -> DR : forwards future completion
+        DR -> DRMC : forwards future completion
+        DRMC -> CE : triggers ClusterEntrypoint::shutDownAsync \non shutdown future completion
+    else external shutdown through SIGTERM
+        EP -> CE: kill -15
+        CE -> CE: closeAsync() through shutdown hook
+    end
+    CE -> CE : shutDownAsync
+    group closeClusterComponent
+        CE -> DRMC : stopApplication
+        activate DRMC
+            DRMC -> DRMC : dispatcherOperationCaches::shutdownCaches
+            DRMC -> DRMC : webMonitorEndpoint::closeAsync
+            DRMC -> RMS : deregisterApplication()
+            activate RMS
+                RMS -> RM : deregisterApplication()
+                activate RM
+                    RM -> RMD : deregisterApplication()
+                    note right
+                      Sends SIGTERM to nodes (in YARN and k8s)
+                    end note
+                    RMD -> RM
+                    RM -> RMS
+                    RMS -> DRMC
+                deactivate RM
+            deactivate RMS
+            DRMC -> DRMC : closeAsyncInternal()
+            activate DRMC
+                DRMC -> DRMC : dispatcherLeaderRetrievalService::stop
+                DRMC -> DRMC : resourceManagerRetrievalService::stop
+                DRMC -> DR : closeAsync()
+                activate DR
+                    DR -> DR : stopDispatcherServices()
+                    activate DR
+                        DR -> DLP : closeAsync()
+                        activate DLP
+                            DLP -> D : closeAsync()
+                                activate D
+                                    D -> D : rpcService::stopServer triggers onStop()
+                                    activate D
+                                        D -> D : terminateRunningJobsAndGetTerminationFuture()
+                                        D -> D : dispatcherBootstrap::stop
+                                        group stopDispatcherServices
+                                            D -> D : JobManagerSharedServices::shutdown
+                                            D -> D : JobManagerMetricGroup::close
+                                        end
+                                    deactivate D
+                                    D --> DLP: CompletableFuture<Void>
+                                deactivate D
+                            DLP -> DLP: jobGraphStore::stop through stopServices()
+                            DLP --> DR: terminationFuture
+                        deactivate DLP
+                    DR --> DRMC : terminationFuture
+                    deactivate DR
+                deactivate DR
+                DRMC -> RMS : closeAsync()
+                activate RMS
+                    RMS -> RMS: leaderElectionService::stop
+                    RMS -> RM: closeAsync()
+                    activate RM
+                        RM -> RM : rpcService:stopServer triggers onStop()
+                        activate RM
+                            group stopResourceManagerServices
+                                RM -> RM : terminate() calls terminate on the driver
+                                RM -> RM : delegationTokenManager::stop
+                                RM -> RM : taskManagerHeartbeatManager::stop
+                                RM -> RM : jobManagerHeartbeatManager::stop
+                                RM -> RM : slotManager::close
+                                RM -> RM : jobLeaderIdService::stop
+                                RM -> RM : resourceManagerMetricGroup::close
+                                RM -> RM : clearStateInternal()
+                            end
+                            RM --> RMS: completed future
+                        deactivate RM
+                    deactivate RM
+                    RMS --> DRMC: serviceTerminationFuture
+                deactivate RMS
+                DRMC --> CE : terminationFuture::complete
+            deactivate DRMC
+        deactivate DRMC
+    end
+    group stopClusterServices
+        CE -> CE : BlobServer::closeAsync
+        CE -> CE : cleanupHaData ? HaServices::closeAndCleanupAllData : HaServices::close
+        CE -> CE : ExecutionGraphInfoStore::close
+        CE -> CE : ProcessMetricGroup::close
+        CE -> CE : MetricRegistry::shutdown
+        CE -> CE : graceful non-blocking shutdown of ioExecutor
+        CE -> CE : RpcService::stopService
+        CE -> CE : JMXService::stopInstance
+    end
+    CE -> CE : RpcSystem::close
+    CE -> CE : clean up directories
+    CE -> DRMC : terminationFuture.complete
+deactivate CE
+@enduml
