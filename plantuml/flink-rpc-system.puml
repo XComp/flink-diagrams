@@ -1,0 +1,51 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+hide members
+
+interface RpcGateway
+class RpcEndpoint
+
+package Receiver <<Frame>> {
+    class AbstractActor <<akka>>
+    class AkkaRpcActor
+    class AkkaRpcService implements RpcService
+    class AkkaRpcSystem implements RpcSystem
+    RpcSystem -> RpcService : creates
+    AkkaRpcSystem -> AkkaRpcService : creates
+    RpcEndpoint -> RpcService : starts actor
+
+    AkkaRpcActor -down-|> AbstractActor
+    AkkaRpcService -> AkkaRpcActor : uses
+    AkkaRpcActor -> RpcEndpoint : translates RPC calls
+}
+
+note bottom of AkkaRpcActor
+    Receiver of RPC calls that are
+    translated into actual method calls
+end note
+
+package Sender <<Frame>> {
+    interface RpcServer extends RpcGateway
+    class RpcEndpoint implements RpcGateway
+    class AkkaInvocationHandler implements RpcServer
+
+    note right of AkkaInvocationHandler
+        Server sends RPC calls
+        to the Akka RPC system
+    end note
+
+}
+
+RpcEndpoint -> RpcServer : uses
+
+package Endpoints <<Frame>> {
+    class TaskExecutor extends RpcEndpoint
+    class FencedRpcEndpoint extends RpcEndpoint
+    class MetricQueryService extends RpcEndpoint
+    class Dispatcher extends FencedRpcEndpoint
+    class ResourceManager extends FencedRpcEndpoint
+    class JobMaster extends FencedRpcEndpoint
+}
+
+@enduml
