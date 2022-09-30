@@ -3,49 +3,71 @@
 
 hide members
 
-interface RpcGateway
-class RpcEndpoint
+package Conceptual <<Frame>> {
+    class UserC
+    interface RpcGateway
 
-package Receiver <<Frame>> {
-    class AbstractActor <<akka>>
-    class AkkaRpcActor
-    class AkkaRpcService implements RpcService
-    class AkkaRpcSystem implements RpcSystem
-    RpcSystem -> RpcService : creates
-    AkkaRpcSystem -> AkkaRpcService : creates
-    RpcEndpoint -> RpcService : starts actor
+    class RpcServer
+    class RpcEndpoint
 
-    AkkaRpcActor -down-|> AbstractActor
-    AkkaRpcService -> AkkaRpcActor : uses
-    AkkaRpcActor -> RpcEndpoint : translates RPC calls
-}
+    interface RpcSystem
+    interface RpcService
 
-note bottom of AkkaRpcActor
-    Receiver of RPC calls that are
-    translated into actual method calls
-end note
+    RpcSystem -d-> RpcService : creates
+    RpcService -d-> RpcGateway : creates
+    RpcService -d-> RpcServer : creates
+    UserC -u-> RpcService : requests gateway
+    UserC -> RpcGateway : uses
+    RpcGateway -> RpcServer : communicates with
+    RpcServer -l> RpcGateway: " "
+    RpcServer -> RpcEndpoint : drives
+    RpcEndpoint -l> RpcServer : schedules runnables
 
-package Sender <<Frame>> {
-    interface RpcServer extends RpcGateway
-    class RpcEndpoint implements RpcGateway
-    class AkkaInvocationHandler implements RpcServer
-
-    note right of AkkaInvocationHandler
-        Server sends RPC calls
-        to the Akka RPC system
+    note as N
+        "Exists both onclient (RpcGateway)
+         and server (RpcServer)."
     end note
 
+    note as N_placeholder
+        "Exists both onclient (RpcGateway)
+         and server (RpcServer)."
+    end note
+
+    N -> RpcSystem
+    N -> RpcService
+    N -d-> N_placeholder
+    N_placeholder -> RpcService
+
+    hide N_placeholder
 }
 
-RpcEndpoint -> RpcServer : uses
+Conceptual -[hidden]-> Akka
 
-package Endpoints <<Frame>> {
-    class TaskExecutor extends RpcEndpoint
-    class FencedRpcEndpoint extends RpcEndpoint
-    class MetricQueryService extends RpcEndpoint
-    class Dispatcher extends FencedRpcEndpoint
-    class ResourceManager extends FencedRpcEndpoint
-    class JobMaster extends FencedRpcEndpoint
+package Akka <<Frame>> {
+    class UserA
+    class AkkaRpcSystem
+    class ActorSystem <<Akka>>
+    class AbstractActor <<Akka>>
+    class AkkaInvocationHandler implements RpcGateway,RpcServer
+    class AkkaRpcActor extends AbstractActor
+    class AkkaRpcService
+
+    UserA -d-> AkkaRpcService : requests gateway
+    UserA -> AkkaInvocationHandler : uses
+    AkkaRpcSystem -u-> AkkaRpcService : creates
+    AkkaRpcSystem -u-> ActorSystem : creates
+    AkkaRpcActor -[hidden]> AbstractActor
+    AkkaInvocationHandler -> AkkaRpcActor : sends RpcInvocation
+    AkkaRpcActor -> RpcEndpoint : invokes methods
+    ActorSystem -u> AkkaRpcActor : drives
+    AkkaRpcService -> ActorSystem : uses
+    AkkaRpcService -u-> AkkaRpcActor : creates
+    AkkaRpcService -u-> AkkaInvocationHandler : creates
+
+    note left of AkkaInvocationHandler
+        Used on server-side as an RpcServer
+        exclusively to support self gateways.
+    end note
 }
 
 @enduml
