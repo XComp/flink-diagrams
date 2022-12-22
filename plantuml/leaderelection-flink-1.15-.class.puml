@@ -1,7 +1,7 @@
 @startuml
 'https://plantuml.com/class-diagram
 
-title Multiple-Component Leader Election introduced in Apache Flink 1.15
+title Per-process Leader Election introduced in Apache Flink 1.15
 
 interface MultipleComponentLeaderElectionDriver {
     void close()

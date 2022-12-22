@@ -1,0 +1,54 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+title Per-component Leader Election that existed in Apache Flink 1.15-
+
+interface LeaderContender {
+    void grantLeadership(UUID leaderSessionID)
+    void revokeLeadership()
+}
+hide LeaderContender fields
+note right: LeaderContender is implemented by any\nclass that utilizes LeaderElectionService
+
+interface LeaderElectionDriver {
+    void writeLeaderInformation(LeaderInformation)
+    boolean hasLeadership()
+    void close()
+}
+hide LeaderElectionDriver fields
+
+interface LeaderElectionEventHandler {
+    void onGrantLeadership(newLeaderSessionId)
+    void onRevokeLeadership()
+    void onLeaderInformationChange(leaderInformation)
+}
+hide LeaderElectionEventHandler fields
+
+interface LeaderElectionService {
+    void start(LeaderContender)
+    void stop()
+    void confirmLeadership(leaderSessionID, leaderAddress)
+    boolean hasLeadership(leaderSessionId)
+}
+hide LeaderElectionService fields
+
+class DefaultLeaderElectionService {
+    leaderElectionDriver: LeaderElectionDriver
+    leaderContender: LeaderContender
+}
+hide DefaultLeaderElectionService methods
+
+class ZooKeeperLeaderElectionDriver implements LeaderElectionDriver
+hide ZooKeeperLeaderElectionDriver members
+
+class KubernetesLeaderElectionDriver implements LeaderElectionDriver
+hide KubernetesLeaderElectionDriver members
+
+class DefaultLeaderElectionService implements LeaderElectionService, LeaderElectionEventHandler
+
+LeaderElectionDriver ---> LeaderElectionEventHandler : uses
+DefaultLeaderElectionService --> LeaderElectionDriver : uses
+DefaultLeaderElectionService --> LeaderContender : uses
+LeaderContender --> LeaderElectionService : uses
+
+@enduml
