@@ -34,6 +34,7 @@ interface LeaderContender {
     void revokeLeadership()
 }
 hide LeaderContender fields
+note right: LeaderContender is implemented by any\nclass that utilizes LeaderElectionService
 
 interface LeaderElectionDriver {
     void writeLeaderInformation(LeaderInformation)
