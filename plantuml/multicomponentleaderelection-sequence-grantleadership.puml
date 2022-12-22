@@ -55,8 +55,6 @@ deactivate MCLED
     deactivate MCLED
 deactivate MCLED
 
-newpage
-
 LL -> MCLED : notify leader change
 activate MCLED
     MCLED -> LES : onLeaderInformationChange(LeaderInformation)
