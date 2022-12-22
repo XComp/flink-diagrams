@@ -1,0 +1,80 @@
+@startuml
+
+title Flink Session Cluster Shutdown (Happy Path)
+
+actor "External LeaderElection Process" as LL
+
+participant "MultipleComponentLeaderElectionDriver (ZK or k8s)" as MCLED
+participant DefaultMultipleComponentLeaderElectionService as MCLES
+participant DefaultLeaderElectionService as LES
+participant LeaderContender as LC
+participant MultipleComponentLeaderElectionAdapterDriver as LED
+
+LL -> MCLED : isLeader
+activate MCLED
+    MCLED -> MCLES : isLeader
+    activate MCLES
+        MCLES -> MCLES : save new session ID
+        MCLES -> LES : onGrantLeadership for each component involved
+    activate LES
+        MCLES --> MCLED
+    deactivate MCLES
+deactivate MCLED
+        LES -> LES : save new session ID in issuedLeaderSessionID
+        LES -> LES : clear confirmed leadership
+        LES -> LC : grantLeadership(newSessionId)
+        activate LC
+            LC -> LC : prepare leadership
+            LC -> LES : confirmLeadership((newSessionId, address)
+        deactivate LC
+        LES -> LED : hasLeadership check
+        activate LED
+            LED -> MCLES : hasLeadership check for componentId
+            activate MCLES
+                MCLES -> MCLED : hasLeadership
+                activate MCLED
+                    MCLED -> LL : hasLeadership
+                    LL --> MCLED
+                    MCLED --> MCLES
+                deactivate MCLED
+                MCLES --> LED
+            deactivate MCLES
+            LED --> LES
+        deactivate LED
+        LES -> LES : verifies issuedLeaderSessionID with confirmed sessionID
+        LES -> LED : writeLeaderInformation
+    deactivate LES
+    activate LED
+        LED -> MCLES : publishLeaderInformation
+    deactivate LED
+    activate MCLES
+        MCLES -> MCLED : publishLeaderInformation
+    deactivate MCLES
+    activate MCLED
+        MCLED -> LL : write information out if leadership is still acquired
+    deactivate MCLED
+deactivate MCLED
+
+newpage
+
+LL -> MCLED : notify leader change
+activate MCLED
+    MCLED -> LES : onLeaderInformationChange(LeaderInformation)
+deactivate MCLED
+activate LES
+    LES -> LES : check if confirmed leadership information is available
+    alt confirmed leadership acquired
+        LES -> LED : write confirmed leader information out
+        activate LED
+            LED -> MCLES : publishLeaderInformation
+        deactivate LED
+        activate MCLES
+            MCLES -> MCLED : publishLeaderInformation
+        deactivate MCLES
+        activate MCLED
+            MCLED -> LL : write information out if leadership is still acquired
+        deactivate MCLED
+    end
+deactivate LES
+
+@enduml
