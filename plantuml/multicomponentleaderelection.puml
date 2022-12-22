@@ -29,8 +29,11 @@ interface MultipleComponentLeaderElectionService {
 }
 hide MultipleComponentLeaderElectionService fields
 
-interface LeaderContender
-hide LeaderContender members
+interface LeaderContender {
+    void grantLeadership(UUID leaderSessionID)
+    void revokeLeadership()
+}
+hide LeaderContender fields
 
 interface LeaderElectionDriver {
     void writeLeaderInformation(LeaderInformation)
