@@ -88,6 +88,7 @@ class ZooKeeperMultipleComponentLeaderElectionDriver implements MultipleComponen
 hide ZooKeeperMultipleComponentLeaderElectionDriver members
 
 DefaultLeaderElectionService --> LeaderElectionDriver : uses
+DefaultLeaderElectionService --> LeaderContender : uses
 LeaderContender --> LeaderElectionService : uses
 
 MultipleComponentLeaderElectionDriverAdapter -> MultipleComponentLeaderElectionService : uses
