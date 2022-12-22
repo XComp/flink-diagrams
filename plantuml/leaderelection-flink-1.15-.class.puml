@@ -1,33 +1,7 @@
 @startuml
 'https://plantuml.com/class-diagram
 
-title Per-process Leader Election introduced in Apache Flink 1.15
-
-interface MultipleComponentLeaderElectionDriver {
-    void close()
-    boolean hasLeadership()
-    void publishLeaderInformation(componentId, leaderInformation)
-    void deleteLeaderInformation(componentId)
-}
-hide MultipleComponentLeaderElectionDriver fields
-
-interface MultipleComponentLeaderElectionDriver.Listener {
-    void isLeader()
-    void notLeader()
-    void notifyLeaderInformationChange(componentId, leaderInformation)
-    void notifyAllKnownLeaderInformation(leaderInformationWithComponentIds)
-}
-hide MultipleComponentLeaderElectionDriver.Listener fields
-
-interface MultipleComponentLeaderElectionService {
-    void close()
-    LeaderElectionDriverFactory createDriverFactory(componentId)
-    void publishLeaderInformation(String componentId, LeaderInformation leaderInformation)
-    void registerLeaderElectionEventHandler(componentId, leaderElectionEventHandler)
-    void unregisterLeaderElectionEventHandler(String componentId)
-    boolean hasLeadership((componentId)
-}
-hide MultipleComponentLeaderElectionService fields
+title Per-component Leader Election that existed in Apache Flink 1.15-
 
 interface LeaderContender {
     void grantLeadership(UUID leaderSessionID)
@@ -58,43 +32,23 @@ interface LeaderElectionService {
 }
 hide LeaderElectionService fields
 
-class DefaultMultipleComponentLeaderElectionService {
-    leaderElectionDriver: MultipleComponentLeaderElectionDriver
-    leaderElectionEventHandlers: Map<ComponentId, LeaderElectionEventHandler>
-}
-hide DefaultMultipleComponentLeaderElectionService methods
-
 class DefaultLeaderElectionService {
     leaderElectionDriver: LeaderElectionDriver
     leaderContender: LeaderContender
 }
 hide DefaultLeaderElectionService methods
 
-class MultipleComponentLeaderElectionDriverAdapter {
-    multipleComponentLeaderElectionService: MultipleComponentLeaderElectionService
-}
-hide MultipleComponentLeaderElectionDriverAdapter methods
+class ZooKeeperLeaderElectionDriver implements LeaderElectionDriver
+hide ZooKeeperLeaderElectionDriver members
 
-class MultipleComponentLeaderElectionDriverAdapter implements LeaderElectionDriver
-
-class DefaultMultipleComponentLeaderElectionService implements MultipleComponentLeaderElectionService
-class DefaultMultipleComponentLeaderElectionService implements MultipleComponentLeaderElectionDriver.Listener
+class KubernetesLeaderElectionDriver implements LeaderElectionDriver
+hide KubernetesLeaderElectionDriver members
 
 class DefaultLeaderElectionService implements LeaderElectionService, LeaderElectionEventHandler
 
-class KubernetesMultipleComponentLeaderElectionDriver implements MultipleComponentLeaderElectionDriver
-hide KubernetesMultipleComponentLeaderElectionDriver members
-
-class ZooKeeperMultipleComponentLeaderElectionDriver implements MultipleComponentLeaderElectionDriver
-hide ZooKeeperMultipleComponentLeaderElectionDriver members
-
+LeaderElectionDriver ---> LeaderElectionEventHandler : uses
 DefaultLeaderElectionService --> LeaderElectionDriver : uses
 DefaultLeaderElectionService --> LeaderContender : uses
 LeaderContender --> LeaderElectionService : uses
-
-MultipleComponentLeaderElectionDriverAdapter -> MultipleComponentLeaderElectionService : uses
-
-DefaultMultipleComponentLeaderElectionService --> LeaderElectionEventHandler : uses
-DefaultMultipleComponentLeaderElectionService --> MultipleComponentLeaderElectionDriver : uses
 
 @enduml
