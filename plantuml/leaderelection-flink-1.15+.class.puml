@@ -3,10 +3,24 @@
 
 title Per-process Leader Election introduced in Apache Flink 1.15
 
+class LeaderInformation {
+    leaderSessionID: UUID
+    leaderAddress: String
+}
+hide LeaderInformation methods
+
+class LeaderInformationWithComponentId {
+    leaderInformation: LeaderInformation
+    componentId: String
+}
+hide LeaderInformationWithComponentId methods
+
+LeaderInformation -[hidden]- LeaderInformationWithComponentId
+
 interface MultipleComponentLeaderElectionDriver {
     void close()
     boolean hasLeadership()
-    void publishLeaderInformation(componentId, leaderInformation)
+    void publishLeaderInformation(componentId, LeaderInformation)
     void deleteLeaderInformation(componentId)
 }
 hide MultipleComponentLeaderElectionDriver fields
@@ -14,23 +28,33 @@ hide MultipleComponentLeaderElectionDriver fields
 interface MultipleComponentLeaderElectionDriver.Listener {
     void isLeader()
     void notLeader()
-    void notifyLeaderInformationChange(componentId, leaderInformation)
-    void notifyAllKnownLeaderInformation(leaderInformationWithComponentIds)
+    void notifyLeaderInformationChange(componentId, LeaderInformation)
+    void notifyAllKnownLeaderInformation(Collection<LeaderInformationWithComponentId>)
 }
 hide MultipleComponentLeaderElectionDriver.Listener fields
+note left of MultipleComponentLeaderElectionDriver.Listener
+    <u>notifyLeaderInformationChange(componentId, LeaderInformation)</u>:
+    Used by ZooKeeper implementation where the monitoring happens per node
+    (which contains the connectionInfo of a single component). The watcher
+    gets triggered on a node change.
+
+    <u>notifyAllKnownLeaderInformation(Collection<LeaderInformationWithComponentId>)</u>:
+    Used by the k8s implementation where all connect information is stored
+    in a single ConfigMap. The watcher gets triggered on a ConfigMap change.
+end note
 
 interface MultipleComponentLeaderElectionService {
     void close()
     LeaderElectionDriverFactory createDriverFactory(componentId)
-    void publishLeaderInformation(String componentId, LeaderInformation leaderInformation)
-    void registerLeaderElectionEventHandler(componentId, leaderElectionEventHandler)
-    void unregisterLeaderElectionEventHandler(String componentId)
-    boolean hasLeadership((componentId)
+    void publishLeaderInformation(componentId, LeaderInformation)
+    void registerLeaderElectionEventHandler(componentId, LeaderElectionEventHandler)
+    void unregisterLeaderElectionEventHandler(componentId)
+    boolean hasLeadership(componentId)
 }
 hide MultipleComponentLeaderElectionService fields
 
 interface LeaderContender {
-    void grantLeadership(UUID leaderSessionID)
+    void grantLeadership(newLeaderSessionId)
     void revokeLeadership()
 }
 hide LeaderContender fields
@@ -53,7 +77,7 @@ hide LeaderElectionEventHandler fields
 interface LeaderElectionService {
     void start(LeaderContender)
     void stop()
-    void confirmLeadership(leaderSessionID, leaderAddress)
+    void confirmLeadership(leaderSessionId, leaderAddress)
     boolean hasLeadership(leaderSessionId)
 }
 hide LeaderElectionService fields
@@ -75,10 +99,12 @@ class MultipleComponentLeaderElectionDriverAdapter {
 }
 hide MultipleComponentLeaderElectionDriverAdapter methods
 
-class MultipleComponentLeaderElectionDriverAdapter implements LeaderElectionDriver
+MultipleComponentLeaderElectionDriverAdapter --|> LeaderElectionDriver
 
 class DefaultMultipleComponentLeaderElectionService implements MultipleComponentLeaderElectionService
 class DefaultMultipleComponentLeaderElectionService implements MultipleComponentLeaderElectionDriver.Listener
+
+MultipleComponentLeaderElectionDriver --> MultipleComponentLeaderElectionDriver.Listener : listener used by\ndriver implementations
 
 class DefaultLeaderElectionService implements LeaderElectionService, LeaderElectionEventHandler
 
@@ -92,7 +118,7 @@ DefaultLeaderElectionService --> LeaderElectionDriver : uses
 DefaultLeaderElectionService --> LeaderContender : uses
 LeaderContender --> LeaderElectionService : uses
 
-MultipleComponentLeaderElectionDriverAdapter -> MultipleComponentLeaderElectionService : uses
+MultipleComponentLeaderElectionDriverAdapter --> MultipleComponentLeaderElectionService : uses
 
 DefaultMultipleComponentLeaderElectionService --> LeaderElectionEventHandler : uses
 DefaultMultipleComponentLeaderElectionService --> MultipleComponentLeaderElectionDriver : uses
