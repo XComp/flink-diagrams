@@ -1,15 +1,15 @@
 @startuml
 'https://plantuml.com/class-diagram
 
-title Proposed refactoring of the multi-component Leader Election that was introduced in Apache Flink 1.15+ (FLINK-26522)
+title Proposed refactoring (Version 2) of the multi-component Leader Election that was introduced in Apache Flink 1.15+ (FLINK-26522)
 
 interface LeaderContender {
     void grantLeadership(leaderSessionID)
     void revokeLeadership()
-    String getLeaderContenderLabel()
+    String getDescription()
 }
 hide LeaderContender fields
-note right: <b>LeaderContender.getLeaderContenderLabel()</b>\n is used to access the componentId
+note right: <b>LeaderContender.getDescription()</b>\n is used to replace the componentId
 
 interface LeaderElectionDriver {
     void writeLeaderInformation(LeaderInformation)
@@ -27,17 +27,37 @@ hide LeaderElectionEventHandler fields
 
 interface LeaderElectionService {
     void start()
-    CompletableFuture<Void> closeAsync()
-    void register(LeaderContender)
-    void deregister(LeaderContender)
-    void confirmLeadership(leaderSessionID, leaderAddress)
-    boolean hasLeadership(leaderSessionId)
+    void close()
 }
 hide LeaderElectionService fields
-note left of LeaderElectionService
-- <b>register</b>/<b>deregister</b> introduced to add/remove contenders
-- <b>start</b>/<b>closeAsync</b> used for managing the leader election driver lifecycle
+note top of LeaderElectionService
+    <b>LeaderElectionService</b> is handling the LeaderElectionDriver lifecycle.
+    It is created and owned by the HighAvailabilityServices.
 end note
+
+interface LeaderElectionRegistry {
+    LeaderElection register(LeaderContender)
+    void remove(LeaderContender)
+}
+hide LeaderElectionRegistry fields
+
+interface LeaderElection {
+    void confirmLeadership(leaderSessionID, leaderAddress)
+    boolean hasLeadership(leaderSessionId)
+    void close()
+}
+hide LeaderElection fields
+note left of LeaderElection
+    <b>close()</b> is used to unregister the LeaderContender
+    from the LeaderElectionRegistry. It is equivalent to the
+    legacy <b>DefaultLeaderService.stop()</b> method.
+end note
+
+class DefaultLeaderElection implements LeaderElection {
+    contender: LeaderContender
+    registry: LeaderElectionRegistry
+}
+hide DefaultLeaderElection methods
 
 class DefaultLeaderElectionService {
     leaderElectionDriver: LeaderElectionDriver
@@ -51,11 +71,14 @@ hide ZooKeeperLeaderElectionDriver members
 class KubernetesLeaderElectionDriver implements LeaderElectionDriver
 hide KubernetesLeaderElectionDriver members
 
-class DefaultLeaderElectionService implements LeaderElectionService, LeaderElectionEventHandler
+class DefaultLeaderElectionService implements LeaderElectionRegistry, LeaderElectionService, LeaderElectionEventHandler
+
+DefaultLeaderElectionService --> DefaultLeaderElection : creates
+LeaderContender --> LeaderElection : uses
+DefaultLeaderElection --> LeaderElectionRegistry : unregisters
 
 LeaderElectionDriver ---> LeaderElectionEventHandler : uses
 DefaultLeaderElectionService --> LeaderElectionDriver : uses
 DefaultLeaderElectionService --> LeaderContender : uses
-LeaderContender --> LeaderElectionService : uses
 
 @enduml
