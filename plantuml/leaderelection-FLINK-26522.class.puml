@@ -35,14 +35,13 @@ note top of LeaderElectionService
     It is created and owned by the HighAvailabilityServices.
 end note
 note bottom of LeaderElectionService
-    We could event make this a generic interface <b>ServiceAsync</b>
+    We could even make this a generic interface <b>ServiceAsync</b>
     that extends <b>AutoCloseableAsync</b> since it's a quite common
     pattern.
 end note
 
 interface LeaderElectionRegistry {
     LeaderElection register(LeaderContender)
-    void remove(LeaderContender)
 }
 hide LeaderElectionRegistry fields
 
@@ -52,7 +51,7 @@ interface LeaderElection {
     void close()
 }
 hide LeaderElection fields
-note bottom of LeaderElection
+note top of LeaderElection
     <b>close()</b> is used to unregister the LeaderContender
     from the LeaderElectionRegistry. It is equivalent to the
     legacy <b>DefaultLeaderService.stop()</b> method.
@@ -70,7 +69,7 @@ class DefaultLeaderElectionService {
     leaderContenders: Collection<LeaderContender>
 }
 hide DefaultLeaderElectionService methods
-note left of DefaultLeaderElectionService
+note bottom of DefaultLeaderElectionService
     We should rename this to something like
     <b>MultiContenderLeaderElectionService</b>.
 end note
@@ -85,9 +84,10 @@ class DefaultLeaderElectionService implements LeaderElectionRegistry, LeaderElec
 
 DefaultLeaderElectionService --> DefaultLeaderElection : creates
 LeaderContender --> LeaderElection : uses
-DefaultLeaderElection --> LeaderElectionRegistry : unregisters
+LeaderContender --> LeaderElectionRegistry : uses to create\nLeaderElection
+DefaultLeaderElection --> DefaultLeaderElectionService: unregisters
 
-LeaderElectionDriver ---> LeaderElectionEventHandler : uses
+LeaderElectionDriver --> LeaderElectionEventHandler : uses
 DefaultLeaderElectionService --> LeaderElectionDriver : uses
 DefaultLeaderElectionService --> LeaderContender : uses
 
