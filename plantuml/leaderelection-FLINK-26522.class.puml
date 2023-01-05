@@ -34,6 +34,11 @@ note top of LeaderElectionService
     <b>LeaderElectionService</b> is handling the LeaderElectionDriver lifecycle.
     It is created and owned by the HighAvailabilityServices.
 end note
+note bottom of LeaderElectionService
+    We could event make this a generic interface <b>ServiceAsync</b>
+    that extends <b>AutoCloseableAsync</b> since it's a quite common
+    pattern.
+end note
 
 interface LeaderElectionRegistry {
     LeaderElection register(LeaderContender)
@@ -47,10 +52,11 @@ interface LeaderElection {
     void close()
 }
 hide LeaderElection fields
-note left of LeaderElection
+note bottom of LeaderElection
     <b>close()</b> is used to unregister the LeaderContender
     from the LeaderElectionRegistry. It is equivalent to the
     legacy <b>DefaultLeaderService.stop()</b> method.
+    LeaderElection could extend AutoCloseableAsync.
 end note
 
 class DefaultLeaderElection implements LeaderElection {
@@ -64,6 +70,10 @@ class DefaultLeaderElectionService {
     leaderContenders: Collection<LeaderContender>
 }
 hide DefaultLeaderElectionService methods
+note left of DefaultLeaderElectionService
+    We should rename this to something like
+    <b>MultiContenderLeaderElectionService</b>.
+end note
 
 class ZooKeeperLeaderElectionDriver implements LeaderElectionDriver
 hide ZooKeeperLeaderElectionDriver members
