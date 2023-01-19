@@ -1,0 +1,50 @@
+@startuml
+
+title FLIP-285 Leader Election initialization for ResourceManager
+
+actor Flink
+participant HighAvailabilityServices as HAS
+participant LeaderElectionService as LES
+participant LeaderElectionDriver as LED
+participant LeaderElection as LE
+participant LeaderContender as LC
+
+activate Flink
+Flink -> HAS : new
+activate HAS
+HAS -> LES : new
+activate LES
+LES -> LED : new
+activate LED
+LED --> LES
+LES --> HAS
+HAS --> Flink
+Flink -> Flink : Initialize components
+Flink -> HAS : getResourceManagerLeaderElectionService
+HAS -> LES : createLeaderElection("resource_manager")
+LES -> LE : new
+activate LE
+LE --> LES
+LES --> HAS
+HAS --> Flink
+Flink -> LC : new with LeaderElection instance
+activate LC
+LC -> LE : register(LeaderContender)
+LE --> LC
+LC --> Flink
+== Instantiation done ==
+Flink -> LC : start()
+LC -> LE : LeaderElection.startLeaderElection()
+LE -> LES : registerContender("resource_manager", resourceManagerInstance)
+alt if LeaderElectionService has leadership during registration
+LES -> LC : grantLeadership(UUID)
+LC -> LC : do things like reinstantiating\nan RPC endpoint pointing to\n<leaderAddress>
+LC -> LE : confirmLeadership(UUID, leaderAddress)
+LE -> LES : confirmLeadership("resource_manager", UUID, leaderAddress)
+LES -> LED : writeLeaderInformation(""resource_manager", UUID, leaderAddress)
+LED --> LES
+end
+LES --> LE
+LE --> LC
+
+@enduml
