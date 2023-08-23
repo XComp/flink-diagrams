@@ -3,7 +3,32 @@
 
 class JobGraph {
     getJobID() : JobID
-    ... ()
+    getName() : String
+    ..
+    getJobType() : JobType
+    getMaximumParallelism() : int
+    getJobConfiguration() : Configuration
+    getCheckpointSettings() : JobCheckpointingSettings
+    getInitialClientHeartbeatTimeout() : long
+    getSavepointRestoreSettings() : SavepointRestoreSettings
+    getSerializedExecutionConfig() : SerializedValue<ExecutionConfig>
+    isDynamic() : boolean
+    isCheckpointingEnabled() : boolean
+    isApproximateLocalRecoveryEnabled() : boolean
+    ..
+    getVertices() : Iterable<JobVertex>
+    getVerticesAsArray() : JobVertex[]
+    findVertexByID(JobVertexID) : JobVertex
+    getNumberOfVertices() : int
+    ..
+    getSlotSharingGroups() : Set<SlotSharingGroup>
+    getCoLocationGroups() : Set<CoLocationGroup>
+    getJobStatusHooks() : List<JobStatusHook>
+    ..
+    getUserArtifacts() : Map<String, DistributedCacheEntry>
+    getUserJarBlobKeys() : List<PermanentBlobKey>
+    getUserJars() : List<Path>
+    hasUsercodeJarFiles() : boolean
 }
 
 class JobVertex {
@@ -47,6 +72,7 @@ interface AccessExecutionGraph {
 interface AccessExecutionJobVertex {
     getJobVertexId() : JobVertexID
     getName() : String
+    ..
     getParallelism() : int
     getMaxParallelism() : int
     getResourceProfile() : ResourceProfile
