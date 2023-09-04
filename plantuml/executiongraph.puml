@@ -1,132 +1,160 @@
 @startuml
 'https://plantuml.com/class-diagram
 
-class JobGraph {
-    getJobID() : JobID
-    getName() : String
-    ..
-    getJobType() : JobType
-    getMaximumParallelism() : int
-    getJobConfiguration() : Configuration
-    getCheckpointSettings() : JobCheckpointingSettings
-    getInitialClientHeartbeatTimeout() : long
-    getSavepointRestoreSettings() : SavepointRestoreSettings
-    getSerializedExecutionConfig() : SerializedValue<ExecutionConfig>
-    isDynamic() : boolean
-    isCheckpointingEnabled() : boolean
-    isApproximateLocalRecoveryEnabled() : boolean
-    ..
-    getVertices() : Iterable<JobVertex>
-    getVerticesAsArray() : JobVertex[]
-    findVertexByID(JobVertexID) : JobVertex
-    getNumberOfVertices() : int
-    ..
-    getSlotSharingGroups() : Set<SlotSharingGroup>
-    getCoLocationGroups() : Set<CoLocationGroup>
-    getJobStatusHooks() : List<JobStatusHook>
-    ..
-    getUserArtifacts() : Map<String, DistributedCacheEntry>
-    getUserJarBlobKeys() : List<PermanentBlobKey>
-    getUserJars() : List<Path>
-    hasUsercodeJarFiles() : boolean
+package Client {
+    class JobGraph {
+        getJobID() : JobID
+        getName() : String
+        ..
+        getJobType() : JobType
+        getMaximumParallelism() : int
+        getJobConfiguration() : Configuration
+        getCheckpointSettings() : JobCheckpointingSettings
+        getInitialClientHeartbeatTimeout() : long
+        getSavepointRestoreSettings() : SavepointRestoreSettings
+        getSerializedExecutionConfig() : SerializedValue<ExecutionConfig>
+        isDynamic() : boolean
+        isCheckpointingEnabled() : boolean
+        isApproximateLocalRecoveryEnabled() : boolean
+        ..
+        getVertices() : Iterable<JobVertex>
+        getVerticesAsArray() : JobVertex[]
+        findVertexByID(JobVertexID) : JobVertex
+        getNumberOfVertices() : int
+        ..
+        getSlotSharingGroups() : Set<SlotSharingGroup>
+        getCoLocationGroups() : Set<CoLocationGroup>
+        getJobStatusHooks() : List<JobStatusHook>
+        ..
+        getUserArtifacts() : Map<String, DistributedCacheEntry>
+        getUserJarBlobKeys() : List<PermanentBlobKey>
+        getUserJars() : List<Path>
+        hasUsercodeJarFiles() : boolean
+    }
+    note left of JobGraph: Serializable representation of the job.
+
+    class JobVertex {
+        getID() : JobVertexID
+        getName() : String
+        getParallelism() : int
+        getMaxParallelism() : int
+        getSlotSharingGroup() : SlotSharingGroup
+        getInvokableClass(ClassLoader) : Class
+        getOperatorIDs() : List<OperatorIDPair>
+        [...] ()
+    }
+    note left of JobVertex: Serializable representation of a JobGraph's task.
 }
 
-class JobVertex {
-    getID() : JobVertexID
-    getName() : String
-    getParallelism() : int
-    getMaxParallelism() : int
-    getSlotSharingGroup() : SlotSharingGroup
-    getInvokableClass(ClassLoader) : Class
-    getOperatorIDs() : List<OperatorIDPair>
-    [...] ()
+package JobManager {
+    interface AccessExecutionGraph {
+        getJobID() : JobID
+        getJobName() : String
+        getJsonPlan() : String
+        getArchivedExecutionConfig() : ArchivedExecutionConfig
+        ..
+        getCheckpointCoordinatorConfig() : CheckpointCoordinatorConfig
+        getStateBackendName() : String
+        getCheckpointStorageName() : String
+        getChangelogStorageName() : String
+        ..
+        getJobState() : JobStatus
+        getStatusTimestamp(JobStatus) : long
+        getFailureInfo() : ErrorInfo
+        ..
+        getJobVertex(JobVertexID) : AccessExecutionJobVertex
+        getAllVertices() : Map<JobVertexID, AccessExecutionJobVertex>
+        getVerticesTopologically() : Iterable<AccessExecutionJobVertex>
+        getAllExecutionVertices() : Iterable<AccessExecutionVertex>
+        ..
+        getCheckpointStatsSnapshot() : CheckpointStatsSnapshot
+        ..
+        getAccumulatorResultsStringified() : StringifiedAccumulatorResult[]
+        getAccumulatorsSerialized() : Map<String, SerializedObject>
+    }
+    note right of AccessExecutionGraph: Representation of a JobGraph while executing the job.
+
+    interface ExecutionGraph {
+
+    }
+
+    interface AccessExecutionJobVertex {
+        getJobVertexId() : JobVertexID
+        getName() : String
+        ..
+        getParallelism() : int
+        getMaxParallelism() : int
+        getResourceProfile() : ResourceProfile
+        ..
+        getAggregatedState() : ExecutionState
+        ..
+        getTaskVertices() : AccessExecutionVertex[]
+        ..
+        getAggregatedUserAccumulatorsStringified() : StringifiedAccumulatorResult[]
+    }
+    note right of AccessExecutionJobVertex: Representation of a JobVertex while executing the job.
+
+    interface AccessExecutionVertex {
+        getTaskNameWithSubtaskIndex() : String
+        getParallelSubtaskIndex() : int
+        ..
+        getExecutionState() : ExecutionState
+        getStateTimestamp(ExecutionState) : long
+        getFailureInfo() : ErrorInfo
+        getExecutionHistory() : ExecutionHistory
+        ..
+        getCurrentExecutionAttempt() : AccessExecution
+        ..
+        getCurrentAssignedResourceLocation() : TaskManagerLocation
+    }
+    note right of AccessExecutionVertex: A parallel instance of the AccessExecutionJobVertex (i.e. a JobVertex of parallelism n results in n AccessExecutionVertex instance for the corresponding AccessExecutionJobVertex)
+
+    interface AccessExecution {
+        getAttemptId() : ExecutionAttemptID
+        getParallelSubtaskIndex() : int
+        getAttemptNumber() : int
+        ..
+        getState() : ExecutionState
+        getStateTimestamps() : long[]
+        getStateEndTimestamps() : long[]
+        getStateTimestamp(ExecutionState) : long
+        getStateEndTimestamp(ExecutionState) : long
+        getFailureInfo() : ErrorInfo
+        ..
+        getAssignedResourceLocation() : TaskManagerLocation
+        ..
+        getUserAccumulatorsStringified() : StringifiedAccumulatorResult[]
+        getIOMetrics() : IOMetrics
+    }
+    note right of AccessExecution: The actual execution abstraction of AccessExecutionVertex (multiple attempts can be made to execute AccessExecutionVertex)
+
+    class Execution implements AccessExecution {
+    }
 }
-note left of JobVertex: Serializable representation of a JobGraph's task.
 
-interface AccessExecutionGraph {
-    getJobID() : JobID
-    getJobName() : String
-    getJsonPlan() : String
-    getArchivedExecutionConfig() : ArchivedExecutionConfig
-    ..
-    getCheckpointCoordinatorConfig() : CheckpointCoordinatorConfig
-    getStateBackendName() : String
-    getCheckpointStorageName() : String
-    getChangelogStorageName() : String
-    ..
-    getJobState() : JobStatus
-    getStatusTimestamp(JobStatus) : long
-    getFailureInfo() : ErrorInfo
-    ..
-    getJobVertex(JobVertexID) : AccessExecutionJobVertex
-    getAllVertices() : Map<JobVertexID, AccessExecutionJobVertex>
-    getVerticesTopologically() : Iterable<AccessExecutionJobVertex>
-    getAllExecutionVertices() : Iterable<AccessExecutionVertex>
-    ..
-    getCheckpointStatsSnapshot() : CheckpointStatsSnapshot
-    ..
-    getAccumulatorResultsStringified() : StringifiedAccumulatorResult[]
-    getAccumulatorsSerialized() : Map<String, SerializedObject>
+package TaskManager {
+    class Task {
+    }
+
+    interface TaskInvokable {
+    }
+
+    class StreamTask implements TaskInvokable
+
+    class AbstractInvokable implements TaskInvokable
+
+    class BatchTask implements AbstractInvokable
+
+    note right of Task: TaskExecutor representation of an Execution instance
 }
-
-interface AccessExecutionJobVertex {
-    getJobVertexId() : JobVertexID
-    getName() : String
-    ..
-    getParallelism() : int
-    getMaxParallelism() : int
-    getResourceProfile() : ResourceProfile
-    ..
-    getAggregatedState() : ExecutionState
-    ..
-    getTaskVertices() : AccessExecutionVertex[]
-    ..
-    getAggregatedUserAccumulatorsStringified() : StringifiedAccumulatorResult[]
-}
-
-interface AccessExecutionVertex {
-    getTaskNameWithSubtaskIndex() : String
-    getParallelSubtaskIndex() : int
-    ..
-    getExecutionState() : ExecutionState
-    getStateTimestamp(ExecutionState) : long
-    getFailureInfo() : ErrorInfo
-    getExecutionHistory() : ExecutionHistory
-    ..
-    getCurrentExecutionAttempt() : AccessExecution
-    ..
-    getCurrentAssignedResourceLocation() : TaskManagerLocation
-}
-
-interface AccessExecution {
-    getAttemptId() : ExecutionAttemptID
-    getParallelSubtaskIndex() : int
-    getAttemptNumber() : int
-    ..
-    getState() : ExecutionState
-    getStateTimestamps() : long[]
-    getStateEndTimestamps() : long[]
-    getStateTimestamp(ExecutionState) : long
-    getStateEndTimestamp(ExecutionState) : long
-    getFailureInfo() : ErrorInfo
-    ..
-    getAssignedResourceLocation() : TaskManagerLocation
-    ..
-    getUserAccumulatorsStringified() : StringifiedAccumulatorResult[]
-    getIOMetrics() : IOMetrics
-}
-
-note left of JobGraph: Serializable representation of the job.
-
-note right of AccessExecutionGraph: Representation of a JobGraph while executing the job.
-note right of AccessExecutionJobVertex: Representation of a JobVertex while executing the job.
-note right of AccessExecutionVertex: A parallel instance of the AccessExecutionJobVertex (i.e. a JobVertex of parallelism n results in n AccessExecutionVertex instance for the corresponding AccessExecutionJobVertex)
-note right of AccessExecution: The actual execution abstraction of AccessExecutionVertex (multiple attempts can be made to execute AccessExecutionVertex)
 
 JobGraph ..> JobVertex : contains
+ExecutionGraph --|> AccessExecutionGraph
 AccessExecutionGraph ..> AccessExecutionJobVertex : contains
 AccessExecutionJobVertex ..> AccessExecutionVertex : contains
 AccessExecutionVertex ..> AccessExecution : contains
+Execution ..> Task : deploys
+Task ..> TaskInvokable : runs
 
 JobGraph ..> AccessExecutionGraph : represents
 JobVertex ..> AccessExecutionJobVertex : represents
