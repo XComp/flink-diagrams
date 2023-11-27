@@ -20,6 +20,21 @@
 'https://plantuml.com/class-diagram
 
 package Client {
+    class StreamGraph {
+        streamNodes : Map<Integer, StreamNode>
+        sources: Set<Integer>
+        sinks: Set<Integer>
+        virtualSideOutputNodes: Map<Integer, Tuple2<Integer, OutputTag>>
+        __
+        getJobName() : String
+        getJobType() : JobType
+        ..
+        addOperator(..) : void
+        addSource(..) : void
+        addSink(..) : void
+    }
+    note right of StreamGraph: Unserialized representation of the job.
+
     class JobGraph {
         getJobID() : JobID
         getName() : String
@@ -166,6 +181,7 @@ package TaskManager {
     note right of Task: TaskExecutor representation of an Execution instance
 }
 
+StreamGraph ..> JobGraph : compiles into
 JobGraph ..> JobVertex : contains
 ExecutionGraph --|> AccessExecutionGraph
 AccessExecutionGraph ..> AccessExecutionJobVertex : contains
