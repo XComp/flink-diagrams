@@ -33,7 +33,39 @@ package Client {
         addSource(..) : void
         addSink(..) : void
     }
-    note right of StreamGraph: Unserialized representation of the job.
+    note left of StreamGraph: Unserialized representation of the job.
+
+    class StreamNode {
+        id : int
+        transformationUUID : String
+        userHash : String
+        ..
+        minResources : ResourceSpec
+        preferredResources ResourceSpec
+        ..
+        slotSharingGroup : String
+        coLocationGroup : String
+        ..
+        operatorFactory : StreamOperatorFactory
+        typeSerializerIn : TypeSerializer<?>
+        typeSerializerOut : TypeSerializer<?>
+        inEdges : List<StreamEdge>
+        outEdge : List<StreamEdge>
+        inputFormat : InputFormat
+        outputFormat : OutputFormat
+    }
+
+    class StreamEdge {
+        edgeId : String
+        sourceId : int
+        sourceOperatorName : String
+        targetId : int
+        targetOperatorName : String
+        outputTag : OutputTag
+        outputPartitioner : StreamPartitioner
+        exchangeMode : StreamExchangeMode
+        intermediateDatasetIdToProduce : IntermediateDataSetID
+    }
 
     class JobGraph {
         getJobID() : JobID
@@ -181,7 +213,10 @@ package TaskManager {
     note right of Task: TaskExecutor representation of an Execution instance
 }
 
-StreamGraph ..> JobGraph : compiles into
+StreamGraph ...> JobGraph : compiles into
+StreamGraph ..> StreamNode : contains
+StreamGraph ..> StreamEdge : contains
+StreamEdge ..> StreamNode :: connects
 JobGraph ..> JobVertex : contains
 ExecutionGraph --|> AccessExecutionGraph
 AccessExecutionGraph ..> AccessExecutionJobVertex : contains
